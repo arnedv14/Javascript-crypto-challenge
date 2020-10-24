@@ -1,5 +1,5 @@
 const nacl = require('libsodium-wrappers')
-const Signature = require('../src/Signature.js')
+const Signature = require('../src/Signature')
 
 describe('signing module', () => {
   let signatory, verifyingKey
@@ -11,7 +11,7 @@ describe('signing module', () => {
     expect(verifyingKey).toBeDefined()
   })
   it('returns a signed message', async () => {
-    const msg = nacl.randombytes_buf(1024);
+    const msg = nacl.randombytes_buf(1024)
     const signedMsg = await signatory.sign(msg)
     expect(nacl.crypto_sign_open(signedMsg, verifyingKey)).toEqual(msg)
   })

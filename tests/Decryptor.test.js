@@ -6,26 +6,25 @@ describe('Decryption', () => {
   let msg, ciphertext, nonce, key, decryptor
 
   beforeAll(async () => {
-    await nacl.ready 
-    key = nacl.crypto_secretbox_keygen() //generate a key for the test suite
-    decryptor = await Decryptor(key) //generate decryptor using the generated key
+    await nacl.ready
+    key = nacl.crypto_secretbox_keygen()
+    decryptor = await Decryptor(key)
   })
 
   beforeEach(() => {
-    msg = nacl.randombytes_buf(1024) //generate a random message for every test
-    nonce = nacl.randombytes_buf(nacl.crypto_secretbox_NONCEBYTES) //initialization vector (Number used once)
-    ciphertext = nacl.crypto_secretbox_easy(msg, nonce, key) //generate ciphertext using message, nonce and key
+    msg = nacl.randombytes_buf(1024)
+    nonce = nacl.randombytes_buf(nacl.crypto_secretbox_NONCEBYTES)
+    ciphertext = nacl.crypto_secretbox_easy(msg, nonce, key)
   })
 
   it('needs to be instantiated with a decryption key', async () => {
     let decryptorWithoutKey
     try {
-      decryptorWithoutKey = await Decryptor();
-      fail('Decryptor can be instantiated without key');
+      decryptorWithoutKey = await Decryptor()
+      fail()
     } catch (e) {
       expect(e).toMatch('no key')
     }
-    decryptor = await Decryptor(key)
     decryptor.decrypt(ciphertext, nonce) // should succeed
   })
 

@@ -1,7 +1,7 @@
 'use strict'
 const nacl = require('libsodium-wrappers')
 
-const SecureSessionPeer = require('../src/SecureSessionPeer.js')
+const SecureSessionPeer = require('../src/SecureSessionPeer')
 
 describe('SecureSessionPeer', () => {
   let peer
