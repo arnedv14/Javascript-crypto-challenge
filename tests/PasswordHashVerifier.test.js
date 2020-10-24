@@ -1,6 +1,6 @@
 'use strict'
 const nacl = require('libsodium-wrappers')
-const PasswordHashVerifier = require('../src/PasswordHashVerifier')
+const PasswordHashVerifier = require('../src/PasswordHashVerifier.js')
 
 describe('PasswordHashVerifier', () => {
 
@@ -12,10 +12,10 @@ describe('PasswordHashVerifier', () => {
     })
 
     beforeEach(() => {
-        const opslimit = nacl.crypto_pwhash_OPSLIMIT_MIN
-        const memlimit = nacl.crypto_pwhash_MEMLIMIT_MIN
-        pw = nacl.randombytes_buf(16)
-        hashedPw = nacl.crypto_pwhash_str(pw, opslimit, memlimit)
+        const opslimit = nacl.crypto_pwhash_OPSLIMIT_MIN //min number of computations to perform
+        const memlimit = nacl.crypto_pwhash_MEMLIMIT_MIN //min number of RAM that the function will use
+        pw = nacl.randombytes_buf(16) //generate random pw
+        hashedPw = nacl.crypto_pwhash_str(pw, opslimit, memlimit) // hash password
     })
 
     it('verifies a correct password', async() => {
