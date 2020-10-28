@@ -1,152 +1,68 @@
 const nacl = require("libsodium-wrappers");
-//const decryptor = require("../src/Decryptor");
+const Decryptor=require('./Decryptor.js');
+const Encryptor=require('./Encryptor.js');
 
 module.exports = async (peer) => {
+  
   await nacl.ready;
-
-  //generate publicKey and private key
+  //generate public key and private key
   let keyPair = nacl.crypto_kx_keypair();
+  global.message;
   let [pk, sk] = [keyPair.publicKey, keyPair.privateKey];
-
-  if (peer == null) {
-    //create object that has to be returned
-    obj = {};
-
-    obj.publicKey = pk;
-
-    //make privateKey unchangeable and secret
-    let weakMap = new WeakMap();
-    const privateKey = {};
-    weakMap.set(privateKey, sk);
-
-    //create function to be able to connect to server
-
-    obj.connect = (peer) => {
-      obj.connection = peer;
-    };
-
-    //"encrypt" functionality
-
-    obj.encrypt = (msg) => {
-      //generate efemeral keys
-      let keys = nacl.crypto_kx_client_session_keys(
-        obj.publicKey,
-        sk,
-        obj.connection.publicKey
-      );
-
-      let [encryptionKey, decryptionKey] = [keys.sharedTx, keys.sharedRx];
-
-      //generate an IV
-      let nonce = nacl.randombytes_buf(nacl.crypto_secretbox_NONCEBYTES); //initialization vector (Number used once)
-
-      let ciphertext = nacl.crypto_secretbox_easy(msg, nonce, encryptionKey);
-
-      res = {
-        ciphertext: ciphertext,
-        nonce: nonce,
-      };
-
-      return res;
-    };
-
-    obj.decrypt = (ciphertext, nonce) => {
-      //generate efemeral keys
-      let keys = nacl.crypto_kx_client_session_keys(
-        obj.publicKey,
-        weakMap.get(privateKey),
-        obj.connection.publicKey
-      );
-
-      let [encryptionKey, decryptionKey] = [keys.sharedTx, keys.sharedRx];
-      return nacl.crypto_secretbox_open_easy(ciphertext, nonce, decryptionKey);
-    };
-
-    obj.send = (msg) => {
-      obj.connection.receive(msg);
-    };
-
-    let messageProp;
-    obj.receive = (msg = null) => {
-      if (msg == null) {
-        let message = messageProp;
-        messageProp = null;
-
-        return message;
-      } else {
-        
-        messageProp = msg;
-        
+  let encryptor,decryptor;  
+  if(peer == null){
+    //Return a client object
+    
+    let clientObj={
+      publicKey:pk,
+      connection:null,
+      encrypt: (msg)=>{
+        return encryptor.encrypt(msg);
+      },
+      decrypt: (ciphertext, nonce)=>{
+        return decryptor.decrypt(ciphertext,nonce);
+      },
+      send:(msg)=>{
+        message=encryptor.encrypt(msg);
+      },
+      receive:(msg)=>{
+        return decryptor.decrypt(message.ciphertext,message.nonce);
+      },
+      connect:async (peer)=>{
+        this.connection=peer;
+        let keysClient= nacl.crypto_kx_client_session_keys(pk,sk,peer.publicKey);
+        encryptor=await Encryptor(keysClient.sharedTx);
+        decryptor=await Decryptor(keysClient.sharedRx);
       }
-    };
-    //return frozen object so it can't be changed afterwards
-    Object.freeze(obj);
-    return obj;
-  } else {
-    //create object that has to be returned
-    obj = {};
-    obj.publicKey = pk;
-    //make privateKey unchangeable and secret
-    let weakMap1 = new WeakMap();
-    const privateKey1 = {};
-    weakMap1.set(privateKey1, sk);
-
-    peer.connect(obj);
-
-    obj.encrypt = (msg) => {
-      //generate efemeral keys
-
-      let keys = nacl.crypto_kx_server_session_keys(
-        obj.publicKey,
-        weakMap1.get(privateKey1),
-        peer.publicKey
-      );
-
-     
-      let [encryptionKey, decryptionKey] = [keys.sharedTx, keys.sharedRx];
-
-      //generate an IV
-      let nonce = nacl.randombytes_buf(nacl.crypto_secretbox_NONCEBYTES); //initialization vector (Number used once)
-
-      let ciphertext = nacl.crypto_secretbox_easy(msg, nonce, encryptionKey);
-
-      res = {
-        ciphertext: ciphertext,
-        nonce: nonce,
-      };
-
-      return res;
-    };
-
-    obj.decrypt = (ciphertext, nonce) => {
-      //generate efemeral keys
-      let keys = nacl.crypto_kx_server_session_keys(
-        obj.publicKey,
-        weakMap1.get(privateKey1),
-        peer.publicKey
-      );
-      //console.log(keys)
-      let [encryptionKey, decryptionKey] = [keys.sharedTx, keys.sharedRx];
-      return nacl.crypto_secretbox_open_easy(ciphertext, nonce, decryptionKey);
-    };
-
-    obj.send = (msg) => {
-      peer.receive(msg);
-    };
-    let messageProp;
-    obj.receive = (msg = null) => {
-      if (msg == null) {
-        let message = messageProp;
-        messageProp = null;
-        return message;
-      } else {
-        messageProp = msg;
+      
+    }
+    
+    
+    return Object.freeze(clientObj);
+  }else{
+    let keysServer = nacl.crypto_kx_server_session_keys(pk,sk,peer.publicKey);
+    const decryptor=await Decryptor(keysServer.sharedRx);
+    const encryptor=await Encryptor(keysServer.sharedTx);
+    //return a server object
+    let serverObj={
+      publicKey:pk,
+      encryptionKey:keysServer.sharedTx,
+      decryptionKey:keysServer.sharedRx,
+      encrypt:(msg)=>{
+        return encryptor.encrypt(msg);
+      },
+      decrypt:(ciphertext, nonce)=>{
+        return decryptor.decrypt(ciphertext,nonce);
+      },
+      send:(msg)=>{
+        message=encryptor.encrypt(msg);
+      },
+      receive:(msg)=>{
+        return decryptor.decrypt(message.ciphertext,message.nonce);
       }
-    };
+    }
 
-    //return frozen object so it can't be changed afterwards
-    Object.freeze(obj);
-    return obj;
-  }
-
-};
+    peer.connect(serverObj);
+    return Object.freeze(serverObj);
+  }   
+}
